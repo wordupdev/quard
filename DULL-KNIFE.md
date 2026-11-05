@@ -1,4 +1,4 @@
-# Dull Knife (Nginx)
+# Dull Knife (0.3.0-dev, Nginx)
 
 Sharp Knife is Quard's existing cold-navigation cookie gate. Dull Knife is an independent, opt-in bot/query denial. Both new switches default **Off**. Installing the plugin does not deploy server rules.
 

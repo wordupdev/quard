@@ -78,7 +78,7 @@ final class Dull {
 	public static function adapt( $base, $engine ) {
 		if ( ! self::active() ) { return $base; }
 		if ( class_exists( 'Quard\\Throttle' ) && 'off' !== Throttle::requested()['mode'] ) { throw new \RuntimeException( __( 'Dull/crawler exports require optional throttling Off; this combination is not qualified.', 'quard' ) ); }
-		if ( 'nginx' !== $engine ) { throw new \RuntimeException( __( 'Dull Knife and trusted crawler exemptions are Nginx-only in this release. No Apache/LiteSpeed exemption is generated.', 'quard' ) ); }
+		if ( 'nginx' !== $engine ) { throw new \RuntimeException( __( 'Dull Knife and trusted crawler exemptions are Nginx-only in 0.3.0-dev. No Apache/LiteSpeed exemption is generated.', 'quard' ) ); }
 		return new KnivesNginx( $base, Plugin::policy(), self::settings() );
 	}
 }

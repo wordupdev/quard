@@ -47,7 +47,7 @@ final class Htaccess {
 	}
 
 	public function capabilities() {
-		return array( 'engine' => $this->engine, 'readiness' => 'apache' === $this->engine ? 'Uncached Apache profile; native module inventory and site tests required' : 'NOT TESTED LIVE — blocking-only candidate; issuer not qualified', 'managed' => 'apache' === $this->engine, 'issuer' => 'apache' === $this->engine, 'apache_cache_hit_verified' => false, 'responses' => 'apache' === $this->engine ? array( 403, 410, 429 ) : array( 403 ) );
+		return array( 'engine' => $this->engine, 'readiness' => 'apache' === $this->engine ? 'Uncached Apache profile; native module inventory and site tests required' : 'EXPERIMENTAL — PHP issuer candidate; full LiteSpeed runtime qualification required', 'managed' => 'apache' === $this->engine, 'issuer' => 'apache' === $this->engine, 'apache_cache_hit_verified' => false, 'responses' => 'apache' === $this->engine ? array( 403, 410, 429 ) : array( 403 ) );
 	}
 
 	private function quote( $s ) {
@@ -59,6 +59,7 @@ final class Htaccess {
 	}
 
 	public function block() {
+		if ( 'litespeed-enterprise' === $this->engine ) { return $this->litespeed_block(); }
 		$p = $this->policy;
 		$hash = $this->fingerprint();
 		$end = 'apache' === $this->engine ? 'END' : 'L';
@@ -104,6 +105,33 @@ final class Htaccess {
 			}
 		}
 		return $out . "# END Quard\n";
+	}
+
+
+	/** Stateless matching: no condition captures, env writes or internal-pass inheritance. */
+	private function litespeed_block() {
+		$p = $this->policy;
+		$out = "# BEGIN Quard\n# Engine: litespeed-enterprise\n# Policy: " . $this->fingerprint() . "\n# EXPERIMENTAL: uncached Enterprise 6.3.7 candidate only. No runtime qualification.\n# PHP clearance requires a separately verified profile; no CO or Header issuer.\n# Install before page-cache and WordPress rules. Cached profiles NOT QUALIFIED.\nRewriteEngine On\n";
+		if ( $p['enabled'] ) {
+			$out .= "# Operational keys never exempt protected parameters. All methods retain cold denial.\n";
+			$out .= 'RewriteCond %{THE_REQUEST} ' . $this->quote( self::request_query_pattern( Policy::query_pattern( $p['exact'], $p['prefixes'] ) ) ) . " [NC]\n";
+			foreach ( array_merge( $p['excluded'], $p['exceptions'] ) as $path ) {
+				$pattern = substr( Policy::path_pattern( array( $path ) ), 1 );
+				$pattern = str_replace( '$', '(?=[?\\t ])', $pattern );
+				$out .= 'RewriteCond %{THE_REQUEST} ' . $this->quote( '!^[^\t ]+[\t ]+(?:https?://[^/\t ]+)?' . $pattern ) . " [NC]\n";
+			}
+			// A valid single cookie allows navigation; absent, malformed or duplicate denies.
+			$out .= 'RewriteCond %{HTTP_COOKIE} ' . $this->quote( '!' . Policy::COOKIE_VALUE ) . " [OR]\n";
+			$out .= 'RewriteCond %{HTTP_COOKIE} ' . $this->quote( Policy::COOKIE_DUPLICATE ) . "\nRewriteRule ^ - [F,L]\n";
+		}
+		return $out . "# END Quard\n";
+	}
+
+	/** Embed the canonical query matcher without losing its query-start boundary. */
+	public static function request_query_pattern( $pattern ) {
+		// query_pattern always begins with (?:^|&); exclude whitespace from scanning.
+		if ( '(?!)' === $pattern ) { return '(?!)'; }
+		return '^[^\t ]+[\t ]+(?:https?://[^/\t ]+)?[^?\t ]+[?](?:[^\t ]*&)?' . substr( $pattern, strlen( '(?:^|&)' ) ) . '[^\t ]*[\t ]+HTTP/';
 	}
 
 	public function files() {

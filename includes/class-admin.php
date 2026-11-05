@@ -251,7 +251,7 @@ final class Admin {
 		<table class="quard-table"><thead><tr><th><?php esc_html_e( 'Adapter', 'quard' ); ?></th><th><?php esc_html_e( 'Readiness', 'quard' ); ?></th></tr></thead><tbody>
 		<tr><td>Nginx</td><td><?php esc_html_e( 'Existing manual HTTP/server/header export. WordPress never edits Nginx or Virtualmin files.', 'quard' ); ?></td></tr>
 		<tr><td>Apache 2.4</td><td><?php esc_html_e( 'Uncached profile only. Cached deployment NOT READY: HITs can bypass denial and issuance; rewrite cache-key isolation also requires qualification. Managed apply requires native module inventory, actual override/header preflight and HTTP verification.', 'quard' ); ?></td></tr>
-		<tr><td>LiteSpeed Enterprise</td><td><?php esc_html_e( 'NOT TESTED LIVE. Blocking-only export candidate; no qualified clearance issuer. Manual review only.', 'quard' ); ?></td></tr>
+		<tr><td>LiteSpeed Enterprise</td><td><?php esc_html_e( 'EXPERIMENTAL. PHP clearance candidate requires an exact qualified uncached Enterprise 6.3.7 profile. Full policy, browser and pre-PHP evidence required; not deployed by export.', 'quard' ); ?></td></tr>
 		<tr><td>OpenLiteSpeed</td><td><?php esc_html_e( 'NOT READY. Separate rewrite loading/restart and header qualification required. No deployable adapter.', 'quard' ); ?></td></tr>
 		</tbody></table></section>
 		<section class="quard-card"><h2><?php esc_html_e( 'Preview and download rules', 'quard' ); ?></h2>

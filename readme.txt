@@ -4,98 +4,73 @@ Tags: security, performance, nginx, query, woocommerce
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1-rc1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Stop wasteful dynamic URL requests at the web server, before they consume WordPress and WooCommerce resources.
+Reduce cold dynamic URL spraying before PHP using a navigation cookie and generated web-server rules.
 
 == Description ==
 
-= Expensive requests. A sharper response. =
+Quard manages a portable query-protection policy in WordPress and exports Nginx configuration for privileged installation. New installations default to off. It never claims that a forgeable navigation cookie authenticates a human.
 
-A single WooCommerce category can generate thousands of filter, price-range and sorting combinations. When those URLs are repeatedly requested, PHP and the database may do expensive work for pages nobody really needs.
-
-**Quard** gives site operators a focused way to control that traffic. WordPress provides the settings and diagnostics; generated web-server rules enforce supported protections before WordPress has to run.
-
-= Sharp Knife: protect dynamic requests =
-
-* Define costly query parameters and wildcard patterns, including WooCommerce-style price and attribute filters.
-* Reject protected cold/direct requests at Nginx before PHP.
-* Allow normal browsing to establish a lightweight navigation cookie for subsequent filtered navigation.
-* Review policy state and test expected behavior from the plugin settings page.
-
-= Dull Knife: keep crawling useful =
-
-* Match configured bot User-Agent patterns against selected dynamic query patterns.
-* Return a chosen response status for those requests, without blocking ordinary catalog pages.
-* Optionally exempt trusted crawler families from Sharp Knife using official IP ranges **and** User-Agent matching. A claimed User-Agent alone never establishes trust.
-
-Dull Knife and crawler exemptions are optional, Nginx-only features. Bot-specific denial can affect indexing; carefully review patterns and response codes before enabling.
-
-= Designed for cautious deployment =
-
-* Clear separation between saved WordPress policy and deployed server configuration.
-* Generated Nginx configuration for manual, administrator-controlled installation.
-* Built-in HTTP diagnostics for common navigation and denial scenarios.
-* Conservative defaults: new installations do not automatically modify Nginx.
-
-Quard works especially well with WooCommerce but can also be configured for other WordPress sites using costly dynamic query URLs.
-
-= Know the limits =
-
-The navigation cookie is **not** cryptographic authentication or a human-verification challenge. A determined automated client can obtain or forge it. Quard primarily reduces cold dynamic URL spraying, not every form of automated traffic. Installed Nginx rules are not removed when the WordPress plugin is deactivated.
-
-**Platform status:** Nginx is the primary supported deployment path. Uncached Apache has a tested limited profile; cached Apache remains unqualified. LiteSpeed Enterprise has not been qualified live; OpenLiteSpeed is deferred. Dull Knife and trusted crawler exemption currently require Nginx.
+Protection and Rules are functional. Traffic does not collect analytics. Advanced exports configuration and shows observed revisions. See README.md for generic installation and retirement guidance. Tests and site-specific operator records are provided separately in the private source/review release.
 
 == Installation ==
 
-1. Install and activate Quard in WordPress.
-2. Open **Settings > Quard** and review the protection rules. Protection is off on new installations until you configure it.
-3. Use **Advanced** to export the generated Nginx configuration files.
-4. As a server administrator, install the HTTP-level maps in the Nginx `http` context and the site-specific directives and response headers in the appropriate virtual host and HTML locations. Preserve existing caching, security and PHP-FPM settings.
-5. Run `nginx -t`; reload Nginx only after validation succeeds.
-6. Return to **Settings > Quard > Protection** and run **Test Protection**.
-7. Test real shopping, filter links, mobile browsing and any checkout/payment integrations before relying on the installation.
-
-For deployment and rollback details, consult the included `README.md` and `DULL-KNIFE.md` documentation. Back up configuration before changes.
+1. Install and activate Quard.
+2. Open Settings > Quard and review the desired policy.
+3. Have an administrator install all three generated files in the correct Nginx contexts.
+4. Validate Nginx, gracefully reload, then run Test Protection.
 
 == Frequently Asked Questions ==
 
-= Will Quard speed up every WordPress request? =
+= Does deactivation remove Nginx protection? =
 
-No. It aims to prevent selected wasteful dynamic requests from reaching PHP. Gains depend on the site's request patterns, caching and server configuration.
+No. Deploy a disabled policy or remove the server integration first. Follow the generic retirement guidance in README.md and your private operator rollback record.
 
-= Does Quard automatically change Nginx? =
+= Is the cookie cryptographic authentication? =
 
-No. Exported configuration must be installed, tested and reloaded by an authorized administrator.
+No. Clients can acquire or forge it. This release reduces cold direct request spraying.
 
-= Is a navigation cookie proof of a human visitor? =
+= Are Apache and LiteSpeed supported? =
 
-No. The cookie is a lightweight browser-navigation signal and can be forged.
-
-= Will deactivating the plugin disable the server rules? =
-
-No. Remove or deploy a disabled server policy before deactivating or deleting Quard. Validate and reload the web server.
-
-= Can Dull Knife block Googlebot from filters without blocking product pages? =
-
-Yes, when configured that way. Its bot and query-pattern matching is selective. Review SEO consequences carefully; returning different indexing signals to crawlers may affect search visibility.
-
-= Is LiteSpeed supported? =
-
-Not as a fully qualified storefront deployment in this release. Nginx is the primary supported platform.
+Apache has a disposable WordPress-tested uncached profile. Cached Apache deployment remains NOT READY: cache HITs can bypass denial and issuance. LiteSpeed Enterprise is an unqualified blocking-only candidate. OpenLiteSpeed is deferred. See README.md for exact limits.
 
 == Changelog ==
 
-= 1.0.0 =
-* Initial public versioning baseline.
-* Sharp Knife cold-query protection and navigation clearance.
-* Optional Dull Knife dynamic-URL crawler rules.
-* Optional official-IP-plus-User-Agent trusted crawler exemptions.
-* Server-configuration exports and HTTP diagnostics.
+= 0.3.0-dev =
+* Gate active dynamic budgets on fresh, read-only operator evidence for an exclusive Nginx limit profile.
+* Refuse mixed/unknown profiles through settings, supported imports, WP-CLI and generated configuration; Off remains supported.
+* Show capability and separate deployed state without attributing shared limiter outcomes or claiming automatic detection.
+* Preserve cold protection and navigation recovery; no live limiter configuration changes.
 
-== Upgrade Notice ==
 
-= 1.0.0 =
-Review the generated web-server policy carefully before enabling. Server changes require manual administration and are not undone by plugin deactivation.
+= 0.2.3.1-dev =
+* Add native Nginx navigation renewal for eligible existing WordPress documents after cookie expiry, cache revalidation or history restoration.
+* Keep direct cold protected URLs denied; add literal-homepage diagnostics and separate actual-menu browser acceptance coverage.
+* Preserve protection rules and optional throttling settings; re-export and deploy the complete updated Nginx revision.
+
+= 0.2.3-dev =
+* Add optional Nginx dynamic-query budgets with Off, Observe and Enforce modes.
+* Add separate per-client and optional shared-site budgets, private operator preflight and configuration status.
+* Keep all budgets off by default and preserve the existing cold-query policy and backend safety gates.
+
+= 0.2.2-dev =
+* Qualify scoped Nginx WordPress cache profiles with genuine HIT and early-denial evidence.
+* Validate Quard cookie attributes independently of unrelated cookies and reject conflicting clearance headers.
+* Preserve the existing Nginx policy and unqualified-backend deployment refusals.
+
+= 0.2.1-dev =
+* Keep cached Apache deployment disabled after real WordPress cache safety investigation.
+* Prevent cache-module diagnostics from granting a verified badge.
+* Strengthen the native rewrite/header preflight.
+
+= 0.2.0-dev =
+* Add Apache document-root rules and safe managed-block preview/apply/remove/recovery.
+* Add a separately labelled LiteSpeed Enterprise candidate; defer OpenLiteSpeed.
+* Preserve the existing Nginx adapter and security policy.
+* Refuse automatic writes on cached or unconfirmed backends.
+
+== 0.3.0-dev ==
+Optional Nginx Dull Knife bot/query denial and separate official IP + UA crawler exemption from Sharp. Both default Off; operator deployment required. Bot-only denial can affect indexing; 410 requires explicit acknowledgement. See DULL-KNIFE.md. No UA-only exemption.

@@ -1,5 +1,5 @@
 <?php
-/** WordPress lifecycle and settings. No PHP request blocking or PHP cookie issuer. */
+/** WordPress lifecycle and settings. No PHP request blocking; qualified LiteSpeed profiles may issue clearance. */
 namespace Quard;
 
 defined( 'ABSPATH' ) || exit;
@@ -8,8 +8,11 @@ final class Plugin {
 	const OPTION = 'quard_settings';
 
 	public static function boot() {
+		LitespeedClearance::boot();
 		add_action( 'admin_init', array( __CLASS__, 'register' ) );
-		add_action( 'wp_enqueue_scripts', array( 'Quard\\Navigation', 'enqueue' ) );
+		if ( false === stripos( isset( $_SERVER['SERVER_SOFTWARE'] ) ? $_SERVER['SERVER_SOFTWARE'] : '', 'LiteSpeed' ) ) {
+			add_action( 'wp_enqueue_scripts', array( 'Quard\\Navigation', 'enqueue' ) );
+		}
 		// Cover add/update/import/WP-CLI even when admin_init never runs.
 		add_filter( 'sanitize_option_' . Throttle::OPTION, array( 'Quard\\Throttle', 'guard_option' ), PHP_INT_MAX );
 		add_filter( 'pre_update_option_' . Throttle::OPTION, array( 'Quard\\Throttle', 'guard_option' ), PHP_INT_MAX );
