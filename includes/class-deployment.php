@@ -38,10 +38,31 @@ final class Deployment {
 	public static function adapter( $engine = '' ) {
 		if ( ! $engine ) { $engine = self::detect()['engine']; }
 		$host = strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
-		if ( in_array( $engine, array( 'apache', 'litespeed-enterprise' ), true ) ) { $base = new Htaccess( Plugin::policy(), $host, $engine ); return class_exists( 'Quard\\Dull' ) ? Dull::adapt( $base, $engine ) : $base; }
+		if ( in_array( $engine, array( 'apache', 'litespeed-enterprise' ), true ) ) {
+			$base = new Htaccess( Plugin::policy(), $host, $engine );
+			if ( class_exists( 'Quard\\Dull' ) && Dull::active() ) {
+				throw new \RuntimeException( __( 'Dull Knife and verified crawler exemptions require Nginx. Use manual Sharp Knife-only export for this engine; managed deployment of these features is not supported.', 'quard' ) );
+			}
+			return $base;
+		}
 		if ( in_array( $engine, array( 'openlitespeed', 'litespeed-unknown' ), true ) ) { throw new \RuntimeException( 'This LiteSpeed edition has no qualified active adapter. Manual review is required.' ); }
 		// CLI/unknown hosting retains the existing Nginx export contract; never auto-installs it.
 		$base = new Nginx( Plugin::policy(), $host ); return class_exists( 'Quard\\Dull' ) ? Dull::adapt( $base, 'nginx' ) : $base;
+	}
+
+	/** Pure manual generation. Selecting a target grants no runtime or deployment capability. */
+	public static function manual_adapter( $engine ) {
+		if ( ! is_string( $engine ) || ! in_array( $engine, array( 'nginx', 'apache', 'litespeed-enterprise', 'openlitespeed' ), true ) ) {
+			throw new \InvalidArgumentException( esc_html__( 'Choose a manual export target above. Server detection does not select an unconfirmed LiteSpeed edition.', 'quard' ) );
+		}
+		if ( 'openlitespeed' === $engine ) {
+			throw new \RuntimeException( esc_html__( 'OpenLiteSpeed is NOT READY: this release has no rule generator for it. Do not install Apache or Enterprise rules as an assumed substitute.', 'quard' ) );
+		}
+		if ( in_array( $engine, array( 'apache', 'litespeed-enterprise' ), true ) ) {
+			$host = strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+			return new Htaccess( Plugin::policy(), $host, $engine );
+		}
+		return self::adapter( $engine );
 	}
 
 	public static function file() {

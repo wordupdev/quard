@@ -1,8 +1,18 @@
 # Quard — WordPress Query Guard
 
-**0.3.0-dev** · PHP 7.4+ · WordPress 6.4+ · GPL-2.0-or-later
+**1.1.1-rc1 — engineering candidate** · PHP 7.4+ · WordPress 6.4+ · GPL-2.0-or-later
 
 Quard reduces cold requests to expensive dynamic URLs before PHP. WordPress manages the policy; generated Nginx rules enforce it. New installations default to **off**.
+
+## Manual rule preview on shared hosting
+
+Settings → Quard has an explicit **Manual export target** selector. Choose Nginx, Apache 2.4, or the experimental LiteSpeed Enterprise candidate. An unknown LiteSpeed edition asks for a choice rather than substituting Nginx. OpenLiteSpeed has no generator and remains NOT READY.
+
+Preview/download uses the same canonical policy and fingerprint as that target's generator. Nginx exports three separate context files; Apache/LiteSpeed export their own managed block. Apache/LiteSpeed manual exports contain Sharp Knife only, even when saved Nginx-only Dull/crawler features are enabled. A prominent scope warning accompanies the preview and download, and response headers repeat the selected engine, exported policy fingerprint and omitted-feature warning. These exports do not disable or save any settings. Managed deployment still refuses active unsupported add-ons. Unsupported response codes produce an explanation. Downloaded bytes match the preview.
+
+The choice follows Quard tab links and the page URL. This browser also remembers it per site/admin when local storage is available. JavaScript-disabled or storage-blocked browsers can still use the ordinary GET selector and download links; the URL carries their selection. No WordPress policy option or server file is changed by preview.
+
+**Manual candidate — runtime NOT VERIFIED** is distinct from effective protection. A selected Enterprise target does not prove the detected edition or qualify its cache, PHP issuer, or automatic installation. Incompatible rules can break shoppers. The existing managed-install gates, backups, root/symlink/hash checks and rollback remain mandatory; unconfirmed/cached backends stay refused. This candidate is not a public release or WordPress.org approval.
 
 ## Dull Knife and verified crawler exemptions
 
@@ -95,7 +105,7 @@ Removal and recovery also require previews. Only an owned block is removed. A fa
 
 Apache cached deployment remains **NOT READY**. Genuine cache HIT tests reproduced missing clearance and, with CacheQuickHandler On, bypass of a cold denial on a prewarmed protected URL. QuickHandler Off alone still lost fresh headers. An explicit CACHE filter marker restored issuance in an isolated WordPress fixture, but rewritten routes shared a cache key and returned the wrong page, including checkout/account routes. That experimental profile is not shipped as supported. Automatic installation refuses loaded cache modules; ordinary diagnostic probes cannot qualify a cache. Server/vhost cache directives require an administrator and must never be silently changed by WordPress. Unknown proxies/CDNs also require separate qualification. The uncached native Apache workflow was qualified on a disposable WordPress/WooCommerce fixture; owner-site and real payment qualification remain separate.
 
-LiteSpeed Enterprise is a **NOT TESTED LIVE, blocking-only candidate**, limited to 403. No Apache Header or CO cookie behavior is assumed and no clearance issuer or automatic apply is shipped for it. It is not ready for a storefront rollout. OpenLiteSpeed is **NOT READY / deferred**: no deployable adapter; its rewrite autoload, restart and header behavior need separate runtime verification. Never treat these as a generic LiteSpeed-supported badge.
+LiteSpeed Enterprise has an **experimental uncached PHP-clearance candidate**, limited to 403, inherited from the v1.1.0 GitHub tag. Its stateless rewrite classifier enforces denial in the server; the first-party PHP issuer can grant clearance only when an eligible WordPress navigation executes. It does not qualify LSCache HIT issuance. Manual preview is available even when the edition is unknown, but generation does not establish Enterprise identity or runtime support. No automatic Enterprise apply is shipped. This development task did not test a real LiteSpeed server; a storefront rollout still requires exact-profile policy, browser and pre-PHP qualification. OpenLiteSpeed is **NOT READY / deferred**: no deployable adapter; its rewrite autoload, restart and header behavior need separate runtime verification. Never treat these as a generic LiteSpeed-supported badge.
 
 Private release documents contain server-specific integration, cache limitations, test evidence and the future-site smoke checklist. Only this generic guidance and runtime files belong in the installed plugin.
 

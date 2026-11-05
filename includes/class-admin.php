@@ -28,6 +28,7 @@ final class Admin {
 	public static function assets( $hook ) {
 		if ( 'settings_page_quard' === $hook ) {
 			wp_enqueue_style( 'quard-admin', plugins_url( 'assets/admin.css', QUARD_FILE ), array(), QUARD_VERSION );
+			wp_enqueue_script( 'quard-manual-preview', plugins_url( 'assets/manual-preview.js', QUARD_FILE ), array(), QUARD_VERSION, true );
 		}
 	}
 
@@ -50,21 +51,30 @@ final class Admin {
 	public static function export() {
 		self::authorize( 'quard_export' );
 		$name = isset( $_GET['file'] ) ? sanitize_text_field( wp_unslash( $_GET['file'] ) ) : '';
-		try { $files = Deployment::adapter( self::manual_engine() )->files(); } catch ( \Throwable $e ) { wp_die( esc_html( $e->getMessage() ), '', array( 'response' => 409 ) ); }
+		$engine = self::manual_engine();
+		try { $adapter = Deployment::manual_adapter( $engine ); $files = $adapter->files(); } catch ( \Throwable $e ) { wp_die( esc_html( $e->getMessage() ), '', array( 'response' => 409 ) ); }
 		if ( ! isset( $files[ $name ] ) ) {
-			wp_die( esc_html__( 'Unknown configuration file.', 'quard' ) );
+			wp_die( esc_html__( 'The selected adapter does not provide this configuration file. Preview that target again and use its download links.', 'quard' ), '', array( 'response' => 400 ) );
 		}
 		nocache_headers();
 		header( 'Content-Type: text/plain; charset=utf-8' );
+		header( 'X-Content-Type-Options: nosniff' );
+		header( 'X-Quard-Export-Engine: ' . $engine );
+		header( 'X-Quard-Export-Policy: ' . $adapter->fingerprint() );
+		$warning = self::manual_warning( $engine );
+		if ( $warning ) {
+			header( 'X-Quard-Export-Scope: sharp-only' );
+			header( 'X-Quard-Export-Warning: ' . sanitize_text_field( $warning ) );
+		}
 		header( 'Content-Disposition: attachment; filename="' . ( 0 === strpos( $name, 'quard-' ) ? $name : 'quard-' . $name ) . '"' );
-		echo $files[ $name ]; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- validated plain-text configuration download.
+		echo $files[ $name ];
 		exit;
 	}
 
 	public static function test() {
 		self::authorize( 'quard_test' );
 		Diagnostics::run();
-		wp_safe_redirect( admin_url( 'options-general.php?page=quard&tested=1' ) );
+		wp_safe_redirect( add_query_arg( array( 'page' => 'quard', 'tested' => '1', 'engine' => self::manual_engine() ), admin_url( 'options-general.php' ) ) );
 		exit;
 	}
 
@@ -77,7 +87,7 @@ final class Admin {
 		nocache_headers();
 		header( 'Content-Type: text/plain; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename="quard-' . $name . '"' );
-		echo $files[ $name ]; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- validated plain-text download.
+		echo $files[ $name ];
 		exit;
 	}
 
@@ -98,7 +108,8 @@ final class Admin {
 		$status = Diagnostics::status();
 		$throttle_status = Throttle::status();
 		$last = get_option( Diagnostics::OPTION, array() );
-		$tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'protection';
+		$manual_engine = self::manual_engine();
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'protection';
 		$tabs = array( 'protection' => __( 'Protection', 'quard' ), 'rules' => __( 'Rules', 'quard' ), 'dull' => __( 'Dull Knife', 'quard' ), 'traffic' => __( 'Traffic', 'quard' ), 'advanced' => __( 'Advanced', 'quard' ) );
 		if ( ! isset( $tabs[ $tab ] ) ) {
 			$tab = 'protection';
@@ -113,9 +124,10 @@ final class Admin {
 			<?php settings_errors( 'quard' ); ?>
 			<nav class="quard-nav" aria-label="<?php esc_attr_e( 'Quard settings', 'quard' ); ?>">
 				<?php foreach ( $tabs as $key => $label ) : ?>
-					<a <?php echo $tab === $key ? 'aria-current="page"' : ''; ?> href="<?php echo esc_url( add_query_arg( array( 'page' => 'quard', 'tab' => $key ), admin_url( 'options-general.php' ) ) ); ?>"><?php echo esc_html( $label ); ?></a>
+					<a <?php echo $tab === $key ? 'aria-current="page"' : ''; ?> href="<?php echo esc_url( add_query_arg( array( 'page' => 'quard', 'tab' => $key, 'engine' => $manual_engine ), admin_url( 'options-general.php' ) ) ); ?>"><?php echo esc_html( $label ); ?></a>
 				<?php endforeach; ?>
 			</nav>
+			<?php self::manual_selector( $manual_engine ); ?>
 			<div class="quard-status <?php echo $status['verified'] ? 'quard-verified' : ''; ?>"><span class="quard-dot"></span><div><strong><?php echo esc_html( $status['label'] ); ?></strong><p><?php echo esc_html( sprintf( __( 'Desired protection: %1$s. Observed server state: %2$s. Saving settings requires a separate server deployment.', 'quard' ), $s['enabled'] ? __( 'On', 'quard' ) : __( 'Off', 'quard' ), $status['enabled'] ? $status['enabled'] : __( 'unknown', 'quard' ) ) ); ?></p></div></div>
 			<p class="quard-note" data-quard-throttle-capability="<?php echo esc_attr( $throttle_status['capability'] ); ?>"><strong><?php
 			if ( in_array( $throttle_status['mode'], array( 'observe', 'enforce' ), true ) && 'active' !== $throttle_status['capability'] ) { esc_html_e( 'Throttling server integration needs operator review', 'quard' ); }
@@ -193,9 +205,36 @@ final class Admin {
 	}
 
 	private static function manual_engine() {
-		$default = 'apache' === Deployment::detect()['engine'] ? 'apache' : 'nginx';
-		$engine = isset( $_GET['engine'] ) ? sanitize_key( $_GET['engine'] ) : $default;
-		return in_array( $engine, array( 'nginx', 'apache', 'litespeed-enterprise', 'openlitespeed' ), true ) ? $engine : 'nginx';
+		// GET selects read-only display context. POST is used only by the nonced managed action.
+		if ( isset( $_GET['engine'] ) ) {
+			$engine = is_string( $_GET['engine'] ) ? sanitize_key( wp_unslash( $_GET['engine'] ) ) : '';
+			return in_array( $engine, array( 'nginx', 'apache', 'litespeed-enterprise', 'openlitespeed' ), true ) ? $engine : '';
+		}
+		if ( isset( $_POST['quard_manual_engine'] ) ) {
+			check_admin_referer( 'quard_deploy' );
+			$engine = is_string( $_POST['quard_manual_engine'] ) ? sanitize_key( wp_unslash( $_POST['quard_manual_engine'] ) ) : '';
+			return in_array( $engine, array( 'nginx', 'apache', 'litespeed-enterprise', 'openlitespeed' ), true ) ? $engine : '';
+		}
+		$detected = Deployment::detect()['engine'];
+		return in_array( $detected, array( 'nginx', 'apache', 'openlitespeed' ), true ) ? $detected : '';
+	}
+
+	private static function manual_warning( $engine ) {
+		return in_array( $engine, array( 'apache', 'litespeed-enterprise' ), true ) ? __( 'Sharp Knife only. Dull Knife and verified crawler exemptions are not included for this engine; those features remain Nginx-only.', 'quard' ) : '';
+	}
+
+	private static function manual_selector( $engine ) {
+		$labels = array( 'nginx' => __( 'Nginx', 'quard' ), 'apache' => __( 'Apache 2.4', 'quard' ), 'litespeed-enterprise' => __( 'LiteSpeed Enterprise (experimental candidate)', 'quard' ), 'openlitespeed' => __( 'OpenLiteSpeed — NOT READY', 'quard' ) );
+		$key = 'quard-manual-target-' . substr( hash( 'sha256', home_url( '/' ) . '|' . get_current_user_id() ), 0, 20 );
+		?>
+		<form class="quard-manual-target" method="get" action="<?php echo esc_url( admin_url( 'options-general.php' ) ); ?>" data-storage-key="<?php echo esc_attr( $key ); ?>">
+			<input type="hidden" name="page" value="quard"><input type="hidden" name="tab" value="advanced">
+			<label for="quard-export-engine"><?php esc_html_e( 'Manual export target', 'quard' ); ?></label>
+			<select id="quard-export-engine" name="engine"><option value=""><?php esc_html_e( 'Choose a target…', 'quard' ); ?></option><?php foreach ( $labels as $id => $label ) : ?><option value="<?php echo esc_attr( $id ); ?>" <?php selected( $engine, $id ); ?>><?php echo esc_html( $label ); ?></option><?php endforeach; ?></select>
+			<button class="button" type="submit"><?php esc_html_e( 'Preview rules', 'quard' ); ?></button>
+			<p><?php esc_html_e( 'Preview only: this choice does not change protection, server detection, settings or installed rules. It is carried in this page URL; this browser also remembers it when storage is available.', 'quard' ); ?></p>
+		</form>
+		<?php
 	}
 
 	public static function deploy() {
@@ -218,12 +257,12 @@ final class Admin {
 			$message = $e->getMessage();
 		}
 		set_transient( 'quard_deploy_notice_' . get_current_user_id(), $message, 300 );
-		wp_safe_redirect( admin_url( 'options-general.php?page=quard&tab=advanced' ) );
+		wp_safe_redirect( add_query_arg( array( 'page' => 'quard', 'tab' => 'advanced', 'engine' => self::manual_engine() ), admin_url( 'options-general.php' ) ) );
 		exit;
 	}
 
 	private static function deployment_button( $operation, $label, $disabled = false ) {
-		?><form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="quard_deploy"><input type="hidden" name="operation" value="<?php echo esc_attr( $operation ); ?>"><?php wp_nonce_field( 'quard_deploy' ); ?><button class="button" type="submit" <?php disabled( $disabled ); ?>><?php echo esc_html( $label ); ?></button></form><?php
+		?><form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"><input type="hidden" name="action" value="quard_deploy"><input type="hidden" name="quard_manual_engine" value="<?php echo esc_attr( self::manual_engine() ); ?>"><input type="hidden" name="operation" value="<?php echo esc_attr( $operation ); ?>"><?php wp_nonce_field( 'quard_deploy' ); ?><button class="button" type="submit" <?php disabled( $disabled ); ?>><?php echo esc_html( $label ); ?></button></form><?php
 	}
 
 	private static function deployment_panel( array $status ) {
@@ -255,8 +294,9 @@ final class Admin {
 		<tr><td>OpenLiteSpeed</td><td><?php esc_html_e( 'NOT READY. Separate rewrite loading/restart and header qualification required. No deployable adapter.', 'quard' ); ?></td></tr>
 		</tbody></table></section>
 		<section class="quard-card"><h2><?php esc_html_e( 'Preview and download rules', 'quard' ); ?></h2>
-		<form method="get" action="<?php echo esc_url( admin_url( 'options-general.php' ) ); ?>"><input type="hidden" name="page" value="quard"><input type="hidden" name="tab" value="advanced"><label for="quard-export-engine"><?php esc_html_e( 'Export adapter', 'quard' ); ?></label> <select id="quard-export-engine" name="engine"><?php foreach ( array( 'nginx', 'apache', 'litespeed-enterprise', 'openlitespeed' ) as $id ) : ?><option value="<?php echo esc_attr( $id ); ?>" <?php selected( $engine, $id ); ?>><?php echo esc_html( $labels[ $id ] ); ?></option><?php endforeach; ?></select> <button class="button" type="submit"><?php esc_html_e( 'Preview rules', 'quard' ); ?></button></form>
-		<?php try { $adapter = Deployment::adapter( $engine ); ?>
+		<p class="quard-note"><strong><?php esc_html_e( 'Manual candidate — runtime NOT VERIFIED', 'quard' ); ?></strong> <?php esc_html_e( 'Generating rules neither verifies this target nor installs it. An incompatible server or cache profile can break shopper navigation. Review and qualify the actual backend before installation.', 'quard' ); ?></p>
+		<?php try { $adapter = Deployment::manual_adapter( $engine ); $warning = self::manual_warning( $engine ); ?>
+		<?php if ( $warning ) : ?><div class="notice notice-warning inline quard-export-warning" role="note"><p><strong><?php echo esc_html( $warning ); ?></strong></p></div><?php endif; ?>
 		<p><?php esc_html_e( 'Desired export revision:', 'quard' ); ?> <code class="quard-hash"><?php echo esc_html( $adapter->fingerprint() ); ?></code></p>
 		<?php foreach ( $adapter->files() as $name => $content ) : ?><details class="quard-rule-preview"><summary><?php echo esc_html( $name ); ?></summary><p><a class="button" href="<?php echo esc_url( wp_nonce_url( add_query_arg( array( 'action' => 'quard_export', 'file' => $name, 'engine' => $engine ), admin_url( 'admin-post.php' ) ), 'quard_export' ) ); ?>"><?php esc_html_e( 'Download rules', 'quard' ); ?></a></p><pre dir="ltr"><?php echo esc_html( $content ); ?></pre></details><?php endforeach; ?>
 		<?php } catch ( \Throwable $e ) { ?><p><?php echo esc_html( $e->getMessage() ); ?></p><?php } ?>
@@ -265,7 +305,7 @@ final class Admin {
 		<div class="quard-downloads"><?php self::deployment_button( 'preview', __( 'Preflight and preview', 'quard' ), 'apache' !== $detected['engine'] ); self::deployment_button( 'preview-remove', __( 'Preview remove Quard block', 'quard' ), 'apache' !== $detected['engine'] || empty( $state['block_hash'] ) ); self::deployment_button( 'preview-restore', __( 'Preview previous configuration', 'quard' ), 'apache' !== $detected['engine'] || empty( $state['backup'] ) ); ?></div>
 		<?php if ( is_array( $preview ) ) : ?>
 		<p><strong><?php echo esc_html( $preview['plan']['kind'] ); ?></strong> · <code><?php echo esc_html( $preview['path'] ); ?></code></p><p><?php echo esc_html( $preview['source'] ); ?></p><p><?php echo esc_html( $preview['syntax'] ); ?></p><p><?php echo esc_html( $preview['cache'] ); ?></p>
-		<?php if ( ! function_exists( 'wp_text_diff' ) ) { require_once ABSPATH . WPINC . '/wp-diff.php'; } echo wp_text_diff( $preview['plan']['snapshot']['bytes'], $preview['plan']['after'], array( 'show_split_view' => false ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- WordPress escapes diff output.
+		<?php if ( ! function_exists( 'wp_text_diff' ) ) { require_once ABSPATH . WPINC . '/wp-diff.php'; } echo wp_kses_post( wp_text_diff( $preview['plan']['snapshot']['bytes'], $preview['plan']['after'], array( 'show_split_view' => false ) ) );
 		self::deployment_button( 'apply', __( 'Apply reviewed .htaccess change', 'quard' ) ); ?>
 		<?php endif; ?>
 		<p><?php esc_html_e( 'Nginx and unconfirmed/cached backends use manual export. Managed cleanup is attempted on deactivation; unsafe cleanup stops and leaves a durable warning. Nginx rules always require manual retirement.', 'quard' ); ?></p></section>

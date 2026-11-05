@@ -4,7 +4,7 @@ Tags: security, performance, nginx, query, woocommerce
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.1-rc1
+Stable tag: 1.1.1-rc1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,9 +35,13 @@ No. Clients can acquire or forge it. This release reduces cold direct request sp
 
 = Are Apache and LiteSpeed supported? =
 
-Apache has a disposable WordPress-tested uncached profile. Cached Apache deployment remains NOT READY: cache HITs can bypass denial and issuance. LiteSpeed Enterprise is an unqualified blocking-only candidate. OpenLiteSpeed is deferred. See README.md for exact limits.
+Apache has a disposable WordPress-tested uncached profile. Cached Apache deployment remains NOT READY: cache HITs can bypass denial and issuance. LiteSpeed Enterprise has an experimental uncached PHP-clearance candidate; manual generation does not verify the edition or qualify cache HIT behavior. OpenLiteSpeed is deferred. See README.md for exact limits.
 
 == Changelog ==
+
+= Private Prompt 22 correction (1.1.1-rc1) =
+* Export Sharp Knife-only Apache/LiteSpeed candidates independently of saved Nginx add-ons, with explicit scope warnings.
+* Preserve Nginx bytes, fingerprints and conservative managed deployment gates.
 
 = 0.3.0-dev =
 * Gate active dynamic budgets on fresh, read-only operator evidence for an exclusive Nginx limit profile.
@@ -74,3 +78,10 @@ Apache has a disposable WordPress-tested uncached profile. Cached Apache deploym
 
 == 0.3.0-dev ==
 Optional Nginx Dull Knife bot/query denial and separate official IP + UA crawler exemption from Sharp. Both default Off; operator deployment required. Bot-only denial can affect indexing; 410 requires explicit acknowledgement. See DULL-KNIFE.md. No UA-only exemption.
+
+== Changelog ==
+
+= 1.1.1-rc1 =
+* Separate read-only manual adapter generation from runtime detection and deployment qualification.
+* Preserve a browser-local manual target and URL selection across Quard tabs; unknown editions never silently select Nginx.
+* Keep server installation conservative and label unverified candidate rules explicitly.

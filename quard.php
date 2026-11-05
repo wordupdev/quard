@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Quard
  * Description: Reduce cold dynamic URL spraying with a navigation cookie and generated web-server rules.
- * Version: 1.0.1-rc1
+ * Version: 1.1.1
  * Requires at least: 6.4
  * Requires PHP: 7.4
  * Author: mohsengham
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'QUARD_VERSION', '1.0.1-rc1' );
+define( 'QUARD_VERSION', '1.1.1-rc1' );
 define( 'QUARD_FILE', __FILE__ );
 
 require_once __DIR__ . '/includes/class-policy.php';
