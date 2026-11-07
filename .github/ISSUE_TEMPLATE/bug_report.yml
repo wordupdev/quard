@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible non-security defect
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Please do not report security vulnerabilities here. Follow SECURITY.md. Remove secrets and user data from logs."
+  - type: input
+    id: revision
+    attributes:
+      label: Quard revision
+      description: Commit hash or version from your installation
+      placeholder: "Commit hash / version"
+    validations:
+      required: true
+  - type: dropdown
+    id: server
+    attributes:
+      label: Web server
+      options: [Nginx, Apache, LiteSpeed Enterprise, OpenLiteSpeed, Other / unknown]
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Include safe steps in a disposable environment, without private URLs, secrets or exploit details.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs or screenshots (optional)
